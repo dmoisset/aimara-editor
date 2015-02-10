@@ -26,7 +26,7 @@
  *
  * @author  Daniel Moisset, dmoisset@machinalis.com
  * @version 3.1.2
- * @date    2015-02-09
+ * @date    2015-02-10
  */
 
 (function webpackUniversalModuleDefinition(root, factory) {
@@ -159,7 +159,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  JSONEditor.prototype._create = function (container, options, value, type) {
 	    this.container = container;
 	    this.options = options || {};
-	    this.value = value || null;
+	    this.value = value;
 	    this.type = type;
 	    var mode = this.options.mode || 'tree';
 	    this.setMode(mode);
