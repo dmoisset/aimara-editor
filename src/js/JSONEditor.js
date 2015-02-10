@@ -72,7 +72,7 @@ define(['./treemode', './util'], function (treemode, util) {
   JSONEditor.prototype._create = function (container, options, value, type) {
     this.container = container;
     this.options = options || {};
-    this.value = value || {};
+    this.value = value || null;
     this.type = type;
     var mode = this.options.mode || 'tree';
     this.setMode(mode);
