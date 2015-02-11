@@ -229,6 +229,14 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       }
       this.value = value;
     }
+    else if (this.type.getType() == 'Null') {
+      if (value !== null) {
+        errors.push('Invalid value, expected a Null.');
+        value = this.type.buildDefaultValue();
+      }
+      this.childs = undefined;
+      this.value = value;
+    }
     else {
       // value
       this.childs = undefined;
