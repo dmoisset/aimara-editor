@@ -356,7 +356,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         // a list of anything
         return this.getArrayFromChildren();
       }
-      else if (isObject(value)) {
+      else if (isObject(this.value)) {
         if (value.__label__ !== undefined) {
           // an aimara value (from a constructor)
           return this.getAimaraValueFromChildren();
