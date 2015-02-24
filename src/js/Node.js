@@ -295,6 +295,46 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     }
   };
 
+
+  /**
+   * Get a filled array with children, used in getValue for normal lists and 
+   * lists in Anythings
+   * @return {*} value
+   */
+  Node.prototype.getArrayFromChildren = function() {
+    var arr = [];
+    this.childs.forEach (function (child) {
+      arr.push(child.getValue());
+    });
+    return arr;
+  }
+
+  /**
+   * Get a filled dict with children, used in getValue for normal dicts and 
+   * dicts in Anythings
+   * @return {*} value
+   */
+  Node.prototype.getDictFromChildren = function() {
+    var obj = {};
+    this.childs.forEach (function (child) {
+      obj[child.getField()] = child.getValue();
+    });
+    return obj;
+  }
+
+  /**
+   * Get a filled value with children, used in getValue for normal aimara and 
+   * constructed values, constructed values in choices, and in anythings.
+   * @return {*} value
+   */
+  Node.prototype.getAimaraValueFromChildren = function() {
+    var v = this.value;
+    this.childs.forEach (function (child) {
+      v[child.getField()] = child.getValue();
+    });
+    return v;
+  }
+
   /**
    * Get value. Value is an AIMARA value
    * @return {*} value
@@ -303,34 +343,40 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     //var childs, i, iMax;
 
     if (this.type.getType() == 'List') {
-      var arr = [];
-      this.childs.forEach (function (child) {
-        arr.push(child.getValue());
-      });
-      return arr;
+      return this.getArrayFromChildren();
     }
     else if (this.type.getType() == 'Dict') {
-      var obj = {};
-      this.childs.forEach (function (child) {
-        obj[child.getField()] = child.getValue();
-      });
-      return obj;
+      return this.getDictFromChildren();
     }
     else if (this.type.getType() == 'Constructor' || this.type.getType() == 'Choice') {
-      // Call getValue recursively for children nodes.
-      var v = this.value;
-      this.childs.forEach (function (child) {
-        v[child.getField()] = child.getValue();
-      });
-      return v;
+      return this.getAimaraValueFromChildren();
     } 
-    else {
-      if (this.value === undefined) {
-        this._getDomValue();
+    else if (this.type.getType() == 'Anything') {
+      if (this.value instanceof Array) {
+        // a list of anything
+        return this.getArrayFromChildren();
       }
-
-      return this.value;
+      else if (isObject(value)) {
+        if (value.__label__ !== undefined) {
+          // an aimara value (from a constructor)
+          return this.getAimaraValueFromChildren();
+        } else {
+          // a dict of anything
+          return this.getDictFromChildren();
+        }
+      } else {
+        // a basic type, don't do anything
+        // return logic is the same than non-anything basic values, below
+      }
     }
+
+    // if no value was returned, it's either a plain basic value, or a anything 
+    // with a basic value
+    if (this.value === undefined) {
+      this._getDomValue();
+    }
+
+    return this.value;
   };
 
   /**
