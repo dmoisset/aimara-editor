@@ -115,7 +115,6 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     return this.field;
   };
 
-
   /**
    * This is used in setValue for constructors inside Choices, 
    * constructors in Anythings and plain ol' Constructors 
@@ -191,9 +190,6 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     }
 
     // TODO: remove the DOM of this Node
-    
-
-    
 
     this.type = type || this.type;
     var i, iMax, fields;
