@@ -115,6 +115,64 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     return this.field;
   };
 
+
+  /**
+   * This is used in setValue for constructors inside Choices, 
+   * constructors in Anythings and plain ol' Constructors 
+   */
+  Node.prototype.addConstructorChildren = function(constructor, value) {
+    fields = constructor.getChildren();
+    for (i = 0, iMax = fields.length; i < iMax; i++) {
+      fieldName = fields[i].getFieldName();
+      if (value[fieldName] === undefined || value[fieldName] === null) {
+        errors.push('Missing field: ' + fieldName);
+        value[fieldName] = fields[i].buildDefaultValue();
+      }
+      childValue = value[fieldName];
+      child = new Node(this.editor, {
+        field: fieldName,
+        value: childValue,
+        type: fields[i],
+      });
+      this.appendChild(child);
+    }
+  }
+
+
+  /**
+   * This is used in setValue for normal lists, and lists in Anythings
+   */
+  Node.prototype.addListChildren = function(childrenType, value) {
+    for (i = 0, iMax = value.length; i < iMax; i++) {
+      childValue = value[i];
+      child = new Node(this.editor, {
+        value: childValue,
+        type: childrenType,
+      });
+      this.appendChild(child);
+    }
+  }
+
+  /**
+   * This is used in setValue for normal dicts, and dicts in Anythings
+   */
+  Node.prototype.addDictChildren = function(childrenType, value) {
+    for (var childField in value) {
+      if (value.hasOwnProperty(childField)) {
+        childValue = value[childField];
+        if (childValue !== undefined && !(childValue instanceof Function)) {
+          // ignore undefined and functions
+          child = new Node(this.editor, {
+            field: childField,
+            value: childValue,
+            type: childrenType,
+          });
+          this.appendChild(child);
+        }
+      }
+    }
+  }
+
   /**
    * Set value. Value is an AIMARA value.
    * @param {*} value
@@ -134,55 +192,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
 
     // TODO: remove the DOM of this Node
     
-    function addConstructorChildren(constructor, value) {
-      // this is used for constructors inside Choices, 
-      // constructors in Anythings and plain ol' Constructors 
-      fields = constructor.getChildren();
-      for (i = 0, iMax = fields.length; i < iMax; i++) {
-        fieldName = fields[i].getFieldName();
-        if (value[fieldName] === undefined || value[fieldName] === null) {
-          errors.push('Missing field: ' + fieldName);
-          value[fieldName] = fields[i].buildDefaultValue();
-        }
-        childValue = value[fieldName];
-        child = new Node(this.editor, {
-          field: fieldName,
-          value: childValue,
-          type: fields[i],
-        });
-        this.appendChild(child);
-      }
-    }
 
-    function addListChildren(childrenType, value) {
-      // this is used for normal lists, and lists in Anythings
-      for (i = 0, iMax = value.length; i < iMax; i++) {
-        childValue = value[i];
-        child = new Node(this.editor, {
-          value: childValue,
-          type: childrenType,
-        });
-        this.appendChild(child);
-      }
-    }
-
-    function addDictChildren(childrenType, value) {
-      // this is used for normal dicts, and dicts in Anythings
-      for (var childField in value) {
-        if (value.hasOwnProperty(childField)) {
-          childValue = value[childField];
-          if (childValue !== undefined && !(childValue instanceof Function)) {
-            // ignore undefined and functions
-            child = new Node(this.editor, {
-              field: childField,
-              value: childValue,
-              type: childrenType,
-            });
-            this.appendChild(child);
-          }
-        }
-      }
-    }
     
 
     this.type = type || this.type;
@@ -197,7 +207,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      addListChildren(this.type.getChildren()[0], value);
+      this.addListChildren(this.type.getChildren()[0], value);
       this.value = value;
     }
     else if (this.type.getType() == 'Constructor') {
@@ -206,7 +216,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      addConstructorChildren(this.type, value);
+      this.addConstructorChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Choice') {
@@ -232,7 +242,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         i = 0;
       }
       var constructor = choices[i];
-      addConstructorChildren(constructor, value);
+      this.addConstructorChildren(constructor, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Anything') {
@@ -240,16 +250,16 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
 
       if (value instanceof Array) {
         // a list of anything (item type is anything)
-        addListChildren(this.type, value);
+        this.addListChildren(this.type, value);
       }
       else if (isObject(value)) {
         if (value.__label__ !== undefined) {
           // an aimara value (from a constructor)
           var constructor = this.editor.options.knownConstructors[value.__label__];
-          addConstructorChildren(constructor, value);
+          this.addConstructorChildren(constructor, value);
         } else {
           // a dict of anything (item type is anything)
-          addDictChildren(this.type, value);
+          this.addDictChildren(this.type, value);
         }
       } else {
         // a basic type 
@@ -265,7 +275,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         errors.push('Invalid value, expected a Dict.');
         value = this.type.buildDefaultValue();
       }
-      addDictChildren(this.type.getChildren()[0], value);
+      this.addDictChildren(this.type.getChildren()[0], value);
       this.value = value;
     }
     else if (this.type.getType() == 'Null') {
