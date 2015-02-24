@@ -1,4 +1,13 @@
 define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
+  /**
+  * Check if the given @obj is an object.
+  * @param obj
+  * @returns {boolean} - true if @obj is an object.
+  *                      false if it is a primitive (including null).
+  */
+  function isObject(obj) {
+      return obj === Object(obj);
+  }
 
   /**
    * @constructor Node
@@ -124,6 +133,57 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     }
 
     // TODO: remove the DOM of this Node
+    
+    function addConstructorChildren(constructor, value) {
+      // this is used for constructors inside Choices, 
+      // constructors in Anythings and plain ol' Constructors 
+      fields = constructor.getChildren();
+      for (i = 0, iMax = fields.length; i < iMax; i++) {
+        fieldName = fields[i].getFieldName();
+        if (value[fieldName] === undefined || value[fieldName] === null) {
+          errors.push('Missing field: ' + fieldName);
+          value[fieldName] = fields[i].buildDefaultValue();
+        }
+        childValue = value[fieldName];
+        child = new Node(this.editor, {
+          field: fieldName,
+          value: childValue,
+          type: fields[i],
+        });
+        this.appendChild(child);
+      }
+    }
+
+    function addListChildren(childrenType, value) {
+      // this is used for normal lists, and lists in Anythings
+      for (i = 0, iMax = value.length; i < iMax; i++) {
+        childValue = value[i];
+        child = new Node(this.editor, {
+          value: childValue,
+          type: childrenType,
+        });
+        this.appendChild(child);
+      }
+    }
+
+    function addDictChildren(childrenType, value) {
+      // this is used for normal dicts, and dicts in Anythings
+      for (var childField in value) {
+        if (value.hasOwnProperty(childField)) {
+          childValue = value[childField];
+          if (childValue !== undefined && !(childValue instanceof Function)) {
+            // ignore undefined and functions
+            child = new Node(this.editor, {
+              field: childField,
+              value: childValue,
+              type: childrenType,
+            });
+            this.appendChild(child);
+          }
+        }
+      }
+    }
+    
 
     this.type = type || this.type;
     var i, iMax, fields;
@@ -137,14 +197,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      for (i = 0, iMax = value.length; i < iMax; i++) {
-        childValue = value[i];
-        child = new Node(this.editor, {
-          value: childValue,
-          type: this.type.getChildren()[0],
-        });
-        this.appendChild(child);
-      }
+      addListChildren(this.type.getChildren()[0], value);
       this.value = value;
     }
     else if (this.type.getType() == 'Constructor') {
@@ -153,21 +206,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      fields = this.type.getChildren();
-      for (i = 0, iMax = fields.length; i < iMax; i++) {
-        fieldName = fields[i].getFieldName()
-        if (value[fieldName] === undefined || value[fieldName] === null) {
-          errors.push('Missing field: ' + fieldName);
-          value[fieldName] = fields[i].buildDefaultValue();
-        }
-        childValue = value[fieldName];
-        child = new Node(this.editor, {
-          field: fieldName,
-          value: childValue,
-          type: fields[i],
-        });
-        this.appendChild(child);
-      }
+      addConstructorChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Choice') {
@@ -193,17 +232,30 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         i = 0;
       }
       var constructor = choices[i];
-      fields = constructor.getChildren();
-      for (i = 0, iMax = fields.length; i < iMax; i++) {
-        fieldName = fields[i].getFieldName();
-        childValue = value[fieldName];
-        child = new Node(this.editor, {
-          field: fieldName,
-          value: childValue,
-          type: fields[i],
-        });
-        this.appendChild(child);
+      addConstructorChildren(constructor, value);
+      this.value = value;
+    }
+    else if (this.type.getType() == 'Anything') {
+      this.childs = [];
+
+      if (value instanceof Array) {
+        // a list of anything (item type is anything)
+        addListChildren(this.type, value);
       }
+      else if (isObject(value)) {
+        if (value.__label__ !== undefined) {
+          // an aimara value (from a constructor)
+          var constructor = this.editor.options.knownConstructors[value.__label__];
+          addConstructorChildren(constructor, value);
+        } else {
+          // a dict of anything (item type is anything)
+          addDictChildren(this.type, value);
+        }
+      } else {
+        // a basic type 
+        this.childs = undefined;
+      }
+
       this.value = value;
     }
     else if (this.type.getType() == 'Dict') {
@@ -213,20 +265,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         errors.push('Invalid value, expected a Dict.');
         value = this.type.buildDefaultValue();
       }
-      for (var childField in value) {
-        if (value.hasOwnProperty(childField)) {
-          childValue = value[childField];
-          if (childValue !== undefined && !(childValue instanceof Function)) {
-            // ignore undefined and functions
-            child = new Node(this.editor, {
-              field: childField,
-              value: childValue,
-              type: this.type.getChildren()[0],
-            });
-            this.appendChild(child);
-          }
-        }
-      }
+      addDictChildren(this.type.getChildren()[0], value);
       this.value = value;
     }
     else if (this.type.getType() == 'Null') {
