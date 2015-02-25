@@ -10,6 +10,33 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
+  * Guess the chosen type for an Anything typed value.
+  * @param value
+  */
+  function classifyAnything(value) {
+    if (value === null) {
+      return 'Null';
+    } else if (typeof value === 'boolean') {
+      return 'Boolean';
+    } else if (typeof value === 'number') {
+      return 'Number';
+    } else if (typeof value === 'string') {
+      return 'String';
+    } else if (value instanceof Array) {
+      // a list of anything (item type is anything)
+      return '[Anything]';
+    } else if (isObject(value)) {
+      if (value.__label__ !== undefined) {
+        // an aimara value (from a constructor)
+        return 'Constructor';
+      } else {
+        // a dict of anything (item type is anything)
+        return '{Anything}';
+      }
+    }
+  }
+
+  /**
    * @constructor Node
    * Create a new Node
    * @param {TreeEditor} editor
@@ -244,19 +271,14 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     else if (this.type.getType() == 'Anything') {
       this.childs = [];
 
-      if (value instanceof Array) {
-        // a list of anything (item type is anything)
+      valueType = classifyAnything(value);
+      if (valueType === '[Anything]') {
         this.addListChildren(this.type, value);
-      }
-      else if (isObject(value)) {
-        if (value.__label__ !== undefined) {
-          // an aimara value (from a constructor)
-          var constructor = this.editor.options.knownConstructors[value.__label__];
-          this.addConstructorChildren(constructor, value);
-        } else {
-          // a dict of anything (item type is anything)
-          this.addDictChildren(this.type, value);
-        }
+      } else if (valueType === 'Constructor') {
+        var constructor = this.editor.options.knownConstructors[value.__label__];
+        this.addConstructorChildren(constructor, value);
+      } else if (valueType === '{Anything}') {
+        this.addDictChildren(this.type, value);
       } else {
         // a basic type 
         this.childs = undefined;
@@ -352,21 +374,16 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       return this.getAimaraValueFromChildren();
     } 
     else if (this.type.getType() == 'Anything') {
-      if (this.value instanceof Array) {
-        // a list of anything
+      valueType = classifyAnything(this.value);
+      if (valueType === '[Anything]') {
         return this.getArrayFromChildren();
-      }
-      else if (isObject(this.value)) {
-        if (value.__label__ !== undefined) {
-          // an aimara value (from a constructor)
-          return this.getAimaraValueFromChildren();
-        } else {
-          // a dict of anything
-          return this.getDictFromChildren();
-        }
+      } else if (valueType === 'Constructor') {
+        return this.getAimaraValueFromChildren();
+      } else if (valueType === '{Anything}') {
+        return this.getDictFromChildren();
       } else {
         // a basic type, don't do anything
-        // return logic is the same than non-anything basic values, below
+        // return logic is the same than non-anything-typed basic values, see below
       }
     }
 
