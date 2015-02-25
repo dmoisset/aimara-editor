@@ -148,7 +148,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    */
   Node.prototype.addConstructorChildren = function(constructor, value) {
     fields = constructor.getChildren();
-    for (i = 0, iMax = fields.length; i < iMax; i++) {
+    for (var i = 0, iMax = fields.length; i < iMax; i++) {
       fieldName = fields[i].getFieldName();
       if (value[fieldName] === undefined || value[fieldName] === null) {
         errors.push('Missing field: ' + fieldName);
@@ -169,7 +169,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for normal lists, and lists in Anythings
    */
   Node.prototype.addListChildren = function(childrenType, value) {
-    for (i = 0, iMax = value.length; i < iMax; i++) {
+    for (var i = 0, iMax = value.length; i < iMax; i++) {
       childValue = value[i];
       child = new Node(this.editor, {
         value: childValue,
@@ -219,7 +219,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     // TODO: remove the DOM of this Node
 
     this.type = type || this.type;
-    var i, iMax, fields;
+    var fields;
 
     if (!this.type) {
       this.childs = undefined;
@@ -247,7 +247,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       var choices = this.type.getChildren();
       choiceFound = false;
       try {
-        for (i = 0, iMax = choices.length; i < iMax; i++) {
+        for (var i = 0, iMax = choices.length; i < iMax; i++) {
           if (choices[i].getLabel() == value.getLabel()) {
             choiceFound = true;
             break;
@@ -257,7 +257,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       catch (err) {} // handled bellow, as choiceFound will be left as false
       if (!choiceFound) {
         var choiceNames = [];
-        for (j = 0, jMax = choices.length; j < jMax; j++) {
+        for (var j = 0, jMax = choices.length; j < jMax; j++) {
           choiceNames.push(choices[j].getLabel());
         }
         errors.push('Invalid value, expected a valid choice between ' + choiceNames.join(', ') + '.');
@@ -311,7 +311,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     }
 
     if (this.editor && this.editor.options && typeof this.editor.options.error === 'function') {
-      for (i = 0; i < errors.length; i++) {
+      for (var i = 0; i < errors.length; i++) {
         this.editor.options.error(errors[i]);
       }
     }
