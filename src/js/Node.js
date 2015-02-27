@@ -1084,13 +1084,24 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   Node.prototype._getDomValue = function(silent) {
     var valueInnerText, oldValue;
 
-    if (this.type.getType() === 'Choice') {
-      oldValue = this.value;
-      var option = this.dom.value.options[this.dom.value.selectedIndex].value;
-      for (var i = 0; i < this.type.getChildren().length; i++) {
-        if (this.type.getChildren()[i].getLabel() === option) break;
-      }
-      var newValue = this.type.getChildren()[i].buildDefaultValue();
+    if (this.type.getType() === 'Choice' || this.type.getType() === 'Anything') {
+      var oldValue = this.value,
+          newValue = null,
+          option = this.dom.value.options[this.dom.value.selectedIndex].value;
+
+      if (this.type.getType() === 'Choice') {
+        for (var i = 0; i < this.type.getChildren().length; i++) {
+          if (this.type.getChildren()[i].getLabel() === option) break;
+        }
+        newValue = this.type.getChildren()[i].buildDefaultValue();
+      } else if (this.type.getType() === 'Anything') {
+        if (option !== 'Number' && option !== 'String' && option !== 'Boolean' && option !== 'Null' && option !== '[Anything]' && option !== '{Anything}') {
+          // it's a constructor name
+          newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
+        } else {
+          newValue = this.childs[0].type.buildDefaultValue();
+        }
+      } 
 
       var table = this.dom.tr ? this.dom.tr.parentNode : undefined;
       var lastTr;
