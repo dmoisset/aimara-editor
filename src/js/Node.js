@@ -1742,6 +1742,30 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         }
         domValue.value = valueLabel;
       }
+      else if (this.type.getType() == 'Anything') {
+        domValue.innerHTML = '';
+        function addOption(optionName) {
+          var option = document.createElement('option')
+          option.innerHTML = optionName;
+          option.setAttribute('value', optionName);
+          domValue.appendChild(option);
+        }
+        addOption('Null');
+        addOption('Number');
+        addOption('String');
+        addOption('Boolean');
+        addOption('[Anything]');
+        addOption('{Anything}');
+        for (var constructorName in this.editor.options.knownConstructors) {
+          addOption(constructorName);
+        }
+
+        var valueType = classifyAnything(this.value);
+        if (valueType === 'Constructor') {
+          var valueType = this.value?this.value.getLabel():'';
+        }
+        domValue.value = valueType;
+      }
       else {
         domValue.innerHTML = this._escapeHTML(this.value);
       }
@@ -1828,6 +1852,9 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       domValue.innerHTML = '(...)';
     }
     else if (this.type.getType() == 'Choice') {
+      domValue = document.createElement('select');
+    }
+    else if (this.type.getType() == 'Anything') {
       domValue = document.createElement('select');
     }
     else {
