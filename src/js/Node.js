@@ -37,6 +37,56 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
+   * @constructor FakeType
+   * A fake type to be used when building types for anything items (childs)
+   * @param type
+   * @param label
+   * @param children
+   * @param defaultValue
+   */
+  function FakeType(type, label, children, defaultValue) {
+    this.type = type;
+    this.label = label;
+    this.children = children;
+    this.defaultValue = defaultValue;
+  }
+  FakeType.prototype.getType = function () {
+    return this.type;
+  }
+  FakeType.prototype.getLabel = function () {
+    return this.label;
+  }
+  FakeType.prototype.getChildren = function () {
+    return this.children;
+  }
+  FakeType.prototype.buildDefaultValue = function () {
+    return this.defaultValue;
+  }
+
+  /**
+  * Create a fake type node for the chosen anything item type
+  * @param typeName
+  * @param knownConstructors
+  */
+  function fakeAnythingChildType(typeName) {
+    var anything = FakeType('Anything', '', [], null);
+
+    if (typeName === 'Null') {
+      return new FakeType(typeName, '', [], null);
+    } else if (typeName === 'Boolean') {
+      return new FakeType(typeName, '', [], false);
+    } else if (typeName === 'Number') {
+      return new FakeType(typeName, '', [], 0);
+    } else if (typeName === 'String') {
+      return new FakeType(typeName, '', [], '');
+    } else if (typeName === '[Anything]') {
+      return new FakeType('List', '', [anything], []);
+    } else if (typeName ===  '{Anything}') {
+      return new FakeType('Dict', '', [anything], {});
+    }
+  }
+
+  /**
    * @constructor Node
    * Create a new Node
    * @param {TreeEditor} editor
