@@ -1130,8 +1130,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       this.updateDom({recurse: true});
     }
 
-
-    if (this.dom.value && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Choice') {
+    if (this.dom.value && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Choice' && this.type.getType() != 'Anything') {
       var valueInnerText = util.getInnerText(this.dom.value);
     }
 
