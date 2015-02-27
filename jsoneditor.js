@@ -26,7 +26,7 @@
  *
  * @author  Daniel Moisset, dmoisset@machinalis.com
  * @version 3.1.2
- * @date    2015-02-10
+ * @date    2015-02-27
  */
 
 (function webpackUniversalModuleDefinition(root, factory) {
@@ -159,6 +159,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  JSONEditor.prototype._create = function (container, options, value, type) {
 	    this.container = container;
 	    this.options = options || {};
+	    this.options.knownConstructors = options.knownConstructors || {};
 	    this.value = value;
 	    this.type = type;
 	    var mode = this.options.mode || 'tree';
@@ -2162,6 +2163,92 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(7), __webpack_require__(2)], __WEBPACK_AMD_DEFINE_RESULT__ = function (appendNodeFactory, util) {
+	  /**
+	  * Check if the given @obj is an object.
+	  * @param obj
+	  * @returns {boolean} - true if @obj is an object.
+	  *                      false if it is a primitive (including null).
+	  */
+	  function isObject(obj) {
+	      return obj === Object(obj);
+	  }
+
+	  /**
+	  * Guess the chosen type for an Anything typed value.
+	  * @param value
+	  */
+	  function classifyAnything(value) {
+	    if (value === null) {
+	      return 'Null';
+	    } else if (typeof value === 'boolean') {
+	      return 'Boolean';
+	    } else if (typeof value === 'number') {
+	      return 'Number';
+	    } else if (typeof value === 'string') {
+	      return 'String';
+	    } else if (value instanceof Array) {
+	      // a list of anything (item type is anything)
+	      return '[Anything]';
+	    } else if (isObject(value)) {
+	      if (value.__label__ !== undefined) {
+	        // an aimara value (from a constructor)
+	        return 'Constructor';
+	      } else {
+	        // a dict of anything (item type is anything)
+	        return '{Anything}';
+	      }
+	    }
+	  }
+
+	  /**
+	   * @constructor FakeType
+	   * A fake type to be used when building types for anything items (childs)
+	   * @param type
+	   * @param label
+	   * @param children
+	   * @param defaultValue
+	   */
+	  function FakeType(type, label, children, defaultValue) {
+	    this.type = type;
+	    this.label = label;
+	    this.children = children;
+	    this.defaultValue = defaultValue;
+	  }
+	  FakeType.prototype.getType = function () {
+	    return this.type;
+	  }
+	  FakeType.prototype.getLabel = function () {
+	    return this.label;
+	  }
+	  FakeType.prototype.getChildren = function () {
+	    return this.children;
+	  }
+	  FakeType.prototype.buildDefaultValue = function () {
+	    return this.defaultValue;
+	  }
+
+	  /**
+	  * Create a fake type node for the chosen anything item type
+	  * @param typeName
+	  * @param knownConstructors
+	  */
+	  function fakeAnythingChildType(typeName) {
+	    var anything = new FakeType('Anything', '', [], null);
+
+	    if (typeName === 'Null') {
+	      return new FakeType(typeName, '', [], null);
+	    } else if (typeName === 'Boolean') {
+	      return new FakeType(typeName, '', [], false);
+	    } else if (typeName === 'Number') {
+	      return new FakeType(typeName, '', [], 0);
+	    } else if (typeName === 'String') {
+	      return new FakeType(typeName, '', [], '');
+	    } else if (typeName === '[Anything]') {
+	      return new FakeType('List', '', [anything], []);
+	    } else if (typeName ===  '{Anything}') {
+	      return new FakeType('Dict', '', [anything], {});
+	    }
+	  }
 
 	  /**
 	   * @constructor Node
@@ -2270,6 +2357,63 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 
 	  /**
+	   * This is used in setValue for constructors inside Choices, 
+	   * and plain ol' Constructors 
+	   */
+	  Node.prototype.addConstructorChildren = function(constructor, value) {
+	    fields = constructor.getChildren();
+	    for (var i = 0, iMax = fields.length; i < iMax; i++) {
+	      fieldName = fields[i].getFieldName();
+	      if (value[fieldName] === undefined || value[fieldName] === null) {
+	        errors.push('Missing field: ' + fieldName);
+	        value[fieldName] = fields[i].buildDefaultValue();
+	      }
+	      childValue = value[fieldName];
+	      child = new Node(this.editor, {
+	        field: fieldName,
+	        value: childValue,
+	        type: fields[i],
+	      });
+	      this.appendChild(child);
+	    }
+	  }
+
+
+	  /**
+	   * This is used in setValue for normal lists
+	   */
+	  Node.prototype.addListChildren = function(childrenType, value) {
+	    for (var i = 0, iMax = value.length; i < iMax; i++) {
+	      childValue = value[i];
+	      child = new Node(this.editor, {
+	        value: childValue,
+	        type: childrenType,
+	      });
+	      this.appendChild(child);
+	    }
+	  }
+
+	  /**
+	   * This is used in setValue for normal dicts
+	   */
+	  Node.prototype.addDictChildren = function(childrenType, value) {
+	    for (var childField in value) {
+	      if (value.hasOwnProperty(childField)) {
+	        childValue = value[childField];
+	        if (childValue !== undefined && !(childValue instanceof Function)) {
+	          // ignore undefined and functions
+	          child = new Node(this.editor, {
+	            field: childField,
+	            value: childValue,
+	            type: childrenType,
+	          });
+	          this.appendChild(child);
+	        }
+	      }
+	    }
+	  }
+
+	  /**
 	   * Set value. Value is an AIMARA value.
 	   * @param {*} value
 	   * @param {Type} [type]
@@ -2289,7 +2433,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    // TODO: remove the DOM of this Node
 
 	    this.type = type || this.type;
-	    var i, iMax, fields;
+	    var fields;
 
 	    if (!this.type) {
 	      this.childs = undefined;
@@ -2300,14 +2444,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        value = this.type.buildDefaultValue();
 	      }
 	      this.childs = [];
-	      for (i = 0, iMax = value.length; i < iMax; i++) {
-	        childValue = value[i];
-	        child = new Node(this.editor, {
-	          value: childValue,
-	          type: this.type.getChildren()[0],
-	        });
-	        this.appendChild(child);
-	      }
+	      this.addListChildren(this.type.getChildren()[0], value);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Constructor') {
@@ -2316,21 +2453,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        value = this.type.buildDefaultValue();
 	      }
 	      this.childs = [];
-	      fields = this.type.getChildren();
-	      for (i = 0, iMax = fields.length; i < iMax; i++) {
-	        fieldName = fields[i].getFieldName()
-	        if (value[fieldName] === undefined || value[fieldName] === null) {
-	          errors.push('Missing field: ' + fieldName);
-	          value[fieldName] = fields[i].buildDefaultValue();
-	        }
-	        childValue = value[fieldName];
-	        child = new Node(this.editor, {
-	          field: fieldName,
-	          value: childValue,
-	          type: fields[i],
-	        });
-	        this.appendChild(child);
-	      }
+	      this.addConstructorChildren(this.type, value);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Choice') {
@@ -2338,7 +2461,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var choices = this.type.getChildren();
 	      choiceFound = false;
 	      try {
-	        for (i = 0, iMax = choices.length; i < iMax; i++) {
+	        for (var i = 0, iMax = choices.length; i < iMax; i++) {
 	          if (choices[i].getLabel() == value.getLabel()) {
 	            choiceFound = true;
 	            break;
@@ -2348,7 +2471,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      catch (err) {} // handled bellow, as choiceFound will be left as false
 	      if (!choiceFound) {
 	        var choiceNames = [];
-	        for (j = 0, jMax = choices.length; j < jMax; j++) {
+	        for (var j = 0, jMax = choices.length; j < jMax; j++) {
 	          choiceNames.push(choices[j].getLabel());
 	        }
 	        errors.push('Invalid value, expected a valid choice between ' + choiceNames.join(', ') + '.');
@@ -2356,17 +2479,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	        i = 0;
 	      }
 	      var constructor = choices[i];
-	      fields = constructor.getChildren();
-	      for (i = 0, iMax = fields.length; i < iMax; i++) {
-	        fieldName = fields[i].getFieldName();
-	        childValue = value[fieldName];
-	        child = new Node(this.editor, {
-	          field: fieldName,
-	          value: childValue,
-	          type: fields[i],
-	        });
-	        this.appendChild(child);
+	      this.addConstructorChildren(constructor, value);
+	      this.value = value;
+	    }
+	    else if (this.type.getType() == 'Anything') {
+	      this.childs = [];
+
+	      // get the type for the fake child based on the value type
+	      var valueTypeName = classifyAnything(value),
+	          itemType;
+	      if (valueTypeName === 'Constructor') {
+	        itemType = this.editor.options.knownConstructors[value.__label__];
+	      } else {
+	        itemType = fakeAnythingChildType(valueTypeName);
 	      }
+
+	      child = new Node(this.editor, {
+	        field: 'value',
+	        value: value,
+	        type: itemType,
+	      });
+	      this.appendChild(child);
+
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Dict') {
@@ -2376,20 +2510,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        errors.push('Invalid value, expected a Dict.');
 	        value = this.type.buildDefaultValue();
 	      }
-	      for (var childField in value) {
-	        if (value.hasOwnProperty(childField)) {
-	          childValue = value[childField];
-	          if (childValue !== undefined && !(childValue instanceof Function)) {
-	            // ignore undefined and functions
-	            child = new Node(this.editor, {
-	              field: childField,
-	              value: childValue,
-	              type: this.type.getChildren()[0],
-	            });
-	            this.appendChild(child);
-	          }
-	        }
-	      }
+	      this.addDictChildren(this.type.getChildren()[0], value);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Null') {
@@ -2407,11 +2528,49 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 
 	    if (this.editor && this.editor.options && typeof this.editor.options.error === 'function') {
-	      for (i = 0; i < errors.length; i++) {
+	      for (var i = 0; i < errors.length; i++) {
 	        this.editor.options.error(errors[i]);
 	      }
 	    }
 	  };
+
+
+	  /**
+	   * Get a filled array with children, used in getValue for lists
+	   * @return {*} value
+	   */
+	  Node.prototype.getArrayFromChildren = function() {
+	    var arr = [];
+	    this.childs.forEach (function (child) {
+	      arr.push(child.getValue());
+	    });
+	    return arr;
+	  }
+
+	  /**
+	   * Get a filled dict with children, used in getValue for dicts
+	   * @return {*} value
+	   */
+	  Node.prototype.getDictFromChildren = function() {
+	    var obj = {};
+	    this.childs.forEach (function (child) {
+	      obj[child.getField()] = child.getValue();
+	    });
+	    return obj;
+	  }
+
+	  /**
+	   * Get a filled value with children, used in getValue for normal aimara and 
+	   * constructed values, constructed values in choices, and in anythings.
+	   * @return {*} value
+	   */
+	  Node.prototype.getAimaraValueFromChildren = function() {
+	    var v = this.value;
+	    this.childs.forEach (function (child) {
+	      v[child.getField()] = child.getValue();
+	    });
+	    return v;
+	  }
 
 	  /**
 	   * Get value. Value is an AIMARA value
@@ -2421,34 +2580,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	    //var childs, i, iMax;
 
 	    if (this.type.getType() == 'List') {
-	      var arr = [];
-	      this.childs.forEach (function (child) {
-	        arr.push(child.getValue());
-	      });
-	      return arr;
+	      return this.getArrayFromChildren();
 	    }
 	    else if (this.type.getType() == 'Dict') {
-	      var obj = {};
-	      this.childs.forEach (function (child) {
-	        obj[child.getField()] = child.getValue();
-	      });
-	      return obj;
+	      return this.getDictFromChildren();
 	    }
 	    else if (this.type.getType() == 'Constructor' || this.type.getType() == 'Choice') {
-	      // Call getValue recursively for children nodes.
-	      var v = this.value;
-	      this.childs.forEach (function (child) {
-	        v[child.getField()] = child.getValue();
-	      });
-	      return v;
+	      return this.getAimaraValueFromChildren();
 	    } 
-	    else {
-	      if (this.value === undefined) {
-	        this._getDomValue();
-	      }
-
-	      return this.value;
+	    else if (this.type.getType() == 'Anything') {
+	      // just look at the value of the only fake child (shame on you child, you are a fake)
+	      return this.childs[0].getValue();
 	    }
+
+	    // if no value was returned, it's a plain basic value
+	    if (this.value === undefined) {
+	      this._getDomValue();
+	    }
+
+	    return this.value;
 	  };
 
 	  /**
@@ -3096,15 +3246,32 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * @private
 	   */
 	  Node.prototype._getDomValue = function(silent) {
+	    // avoid a bugged call to this when the dom is being hidden
+	    if (this.hidding) {
+	      return;
+	    }
+
 	    var valueInnerText, oldValue;
 
-	    if (this.type.getType() === 'Choice') {
-	      oldValue = this.value;
-	      var option = this.dom.value.options[this.dom.value.selectedIndex].value;
-	      for (var i = 0; i < this.type.getChildren().length; i++) {
-	        if (this.type.getChildren()[i].getLabel() === option) break;
-	      }
-	      var newValue = this.type.getChildren()[i].buildDefaultValue();
+	    if (this.type.getType() === 'Choice' || this.type.getType() === 'Anything') {
+	      var oldValue = this.value,
+	          newValue = null,
+	          option = this.dom.value.options[this.dom.value.selectedIndex].value;
+
+	      if (this.type.getType() === 'Choice') {
+	        for (var i = 0; i < this.type.getChildren().length; i++) {
+	          if (this.type.getChildren()[i].getLabel() === option) break;
+	        }
+	        newValue = this.type.getChildren()[i].buildDefaultValue();
+	      } else if (this.type.getType() === 'Anything') {
+	        if (option !== 'Number' && option !== 'String' && option !== 'Boolean' && option !== 'Null' && option !== '[Anything]' && option !== '{Anything}') {
+	          // it's a constructor name
+	          newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
+	        } else {
+	          var itemType = fakeAnythingChildType(option);
+	          newValue = itemType.buildDefaultValue();
+	        }
+	      } 
 
 	      var table = this.dom.tr ? this.dom.tr.parentNode : undefined;
 	      var lastTr;
@@ -3115,7 +3282,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	        lastTr = this.getDom();
 	      }
 	      var nextTr = (lastTr && lastTr.parentNode) ? lastTr.nextSibling : undefined;
+	      this.hidding = true;
 	      this.hide();
+	      this.hidding = false;
 	      this.clearDom();
 	      this.childs.forEach(function (child, index) {
 	          child.clearDom();
@@ -3144,8 +3313,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.updateDom({recurse: true});
 	    }
 
-
-	    if (this.dom.value && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Choice') {
+	    if (this.dom.value && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Choice' && this.type.getType() != 'Anything') {
 	      var valueInnerText = util.getInnerText(this.dom.value);
 	    }
 
@@ -3223,7 +3391,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      domValue.style.color = color;
 
 	      // make background color light-gray when empty
-	      var isEmpty = (String(this.value) == '' && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Constructor');
+	      var isEmpty = (String(this.value) == '' && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Constructor' && this.type.getType() != 'Anything');
 	      if (isEmpty) {
 	        util.addClassName(domValue, 'empty');
 	      }
@@ -3268,7 +3436,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 
 	      // strip formatting from the contents of the editable div
-	      if ( t!= 'Choice') {
+	      if (t != 'Choice' && t != 'Anything') {
 	        util.stripFormatting(domValue);
 	      }
 	    }
@@ -3756,6 +3924,30 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        domValue.value = valueLabel;
 	      }
+	      else if (this.type.getType() == 'Anything') {
+	        domValue.innerHTML = '';
+	        function addOption(optionName) {
+	          var option = document.createElement('option')
+	          option.innerHTML = optionName;
+	          option.setAttribute('value', optionName);
+	          domValue.appendChild(option);
+	        }
+	        addOption('Null');
+	        addOption('Number');
+	        addOption('String');
+	        addOption('Boolean');
+	        addOption('[Anything]');
+	        addOption('{Anything}');
+	        for (var constructorName in this.editor.options.knownConstructors) {
+	          addOption(constructorName);
+	        }
+
+	        var valueType = classifyAnything(this.value);
+	        if (valueType === 'Constructor') {
+	          var valueType = this.value?this.value.getLabel():'';
+	        }
+	        domValue.value = valueType;
+	      }
 	      else {
 	        domValue.innerHTML = this._escapeHTML(this.value);
 	      }
@@ -3842,6 +4034,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	      domValue.innerHTML = '(...)';
 	    }
 	    else if (this.type.getType() == 'Choice') {
+	      domValue = document.createElement('select');
+	    }
+	    else if (this.type.getType() == 'Anything') {
 	      domValue = document.createElement('select');
 	    }
 	    else {
@@ -4689,6 +4884,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	      return false;
 	      */
+	    } else if (this.type.getType() === 'Anything') {
+	      // anything type allways has a fake child for the value of the chosen type
+	      return true;
 	    } else {
 	      return this.type.getChildren().length > 0;
 	    }
