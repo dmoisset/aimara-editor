@@ -69,7 +69,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   * @param knownConstructors
   */
   function fakeAnythingChildType(typeName) {
-    var anything = FakeType('Anything', '', [], null);
+    var anything = new FakeType('Anything', '', [], null);
 
     if (typeName === 'Null') {
       return new FakeType(typeName, '', [], null);
