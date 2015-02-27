@@ -1104,7 +1104,8 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           // it's a constructor name
           newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
         } else {
-          newValue = this.childs[0].type.buildDefaultValue();
+          var itemType = fakeAnythingChildType(option);
+          newValue = itemType.buildDefaultValue();
         }
       } 
 
