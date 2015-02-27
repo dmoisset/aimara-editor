@@ -2702,6 +2702,9 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         }
       return false;
       */
+    } else if (this.type.getType() === 'Anything') {
+      // anything type allways has a fake child for the value of the chosen type
+      return true;
     } else {
       return this.type.getChildren().length > 0;
     }
