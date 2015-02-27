@@ -1082,6 +1082,11 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * @private
    */
   Node.prototype._getDomValue = function(silent) {
+    // avoid a bugged call to this when the dom is being hidden
+    if (this.hidding) {
+      return;
+    }
+
     var valueInnerText, oldValue;
 
     if (this.type.getType() === 'Choice' || this.type.getType() === 'Anything') {
@@ -1112,7 +1117,9 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         lastTr = this.getDom();
       }
       var nextTr = (lastTr && lastTr.parentNode) ? lastTr.nextSibling : undefined;
+      this.hidding = true;
       this.hide();
+      this.hidding = false;
       this.clearDom();
       this.childs.forEach(function (child, index) {
           child.clearDom();
