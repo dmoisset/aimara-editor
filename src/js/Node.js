@@ -1226,7 +1226,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       domValue.style.color = color;
 
       // make background color light-gray when empty
-      var isEmpty = (String(this.value) == '' && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Constructor');
+      var isEmpty = (String(this.value) == '' && this.type.getType() != 'List' && this.type.getType() != 'Dict' && this.type.getType() != 'Constructor' && this.type.getType() != 'Anything');
       if (isEmpty) {
         util.addClassName(domValue, 'empty');
       }
