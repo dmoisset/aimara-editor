@@ -194,7 +194,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
 
   /**
    * This is used in setValue for constructors inside Choices, 
-   * constructors in Anythings and plain ol' Constructors 
+   * and plain ol' Constructors 
    */
   Node.prototype.addConstructorChildren = function(constructor, value) {
     fields = constructor.getChildren();
@@ -216,7 +216,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
 
 
   /**
-   * This is used in setValue for normal lists, and lists in Anythings
+   * This is used in setValue for normal lists
    */
   Node.prototype.addListChildren = function(childrenType, value) {
     for (var i = 0, iMax = value.length; i < iMax; i++) {
@@ -230,7 +230,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
-   * This is used in setValue for normal dicts, and dicts in Anythings
+   * This is used in setValue for normal dicts
    */
   Node.prototype.addDictChildren = function(childrenType, value) {
     for (var childField in value) {
@@ -321,18 +321,21 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     else if (this.type.getType() == 'Anything') {
       this.childs = [];
 
-      valueType = classifyAnything(value);
-      if (valueType === '[Anything]') {
-        this.addListChildren(this.type, value);
-      } else if (valueType === 'Constructor') {
-        var constructor = this.editor.options.knownConstructors[value.__label__];
-        this.addConstructorChildren(constructor, value);
-      } else if (valueType === '{Anything}') {
-        this.addDictChildren(this.type, value);
+      // get the type for the fake child based on the value type
+      var valueTypeName = classifyAnything(value),
+          itemType;
+      if (valueTypeName === 'Constructor') {
+        itemType = this.editor.options.knownConstructors[value.__label__];
       } else {
-        // a basic type 
-        this.childs = undefined;
+        itemType = fakeAnythingChildType(valueTypeName);
       }
+
+      child = new Node(this.editor, {
+        field: 'value',
+        value: value,
+        type: itemType,
+      });
+      this.appendChild(child);
 
       this.value = value;
     }
@@ -369,8 +372,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
 
 
   /**
-   * Get a filled array with children, used in getValue for normal lists and 
-   * lists in Anythings
+   * Get a filled array with children, used in getValue for lists
    * @return {*} value
    */
   Node.prototype.getArrayFromChildren = function() {
@@ -382,8 +384,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
-   * Get a filled dict with children, used in getValue for normal dicts and 
-   * dicts in Anythings
+   * Get a filled dict with children, used in getValue for dicts
    * @return {*} value
    */
   Node.prototype.getDictFromChildren = function() {
@@ -424,21 +425,11 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       return this.getAimaraValueFromChildren();
     } 
     else if (this.type.getType() == 'Anything') {
-      valueType = classifyAnything(this.value);
-      if (valueType === '[Anything]') {
-        return this.getArrayFromChildren();
-      } else if (valueType === 'Constructor') {
-        return this.getAimaraValueFromChildren();
-      } else if (valueType === '{Anything}') {
-        return this.getDictFromChildren();
-      } else {
-        // a basic type, don't do anything
-        // return logic is the same than non-anything-typed basic values, see below
-      }
+      // just look at the value of the only fake child (shame on you child, you are a fake)
+      return this.childs[0].getValue();
     }
 
-    // if no value was returned, it's either a plain basic value, or a anything 
-    // with a basic value
+    // if no value was returned, it's a plain basic value
     if (this.value === undefined) {
       this._getDomValue();
     }
