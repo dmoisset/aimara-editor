@@ -1264,7 +1264,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       }
 
       // strip formatting from the contents of the editable div
-      if ( t!= 'Choice') {
+      if (t != 'Choice' && t != 'Anything') {
         util.stripFormatting(domValue);
       }
     }
