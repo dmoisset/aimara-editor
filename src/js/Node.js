@@ -2745,8 +2745,8 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   Node.prototype._isRemovable = function () {
     if (this.parent) {
       var ptype = this.parent.type.getType();
-      return (ptype === "List") || (ptype === "Dict");
-    };
+      return this.editable.value && (ptype === "List") || (ptype === "Dict");
+    }
     return false
   };
 
