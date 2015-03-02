@@ -108,7 +108,8 @@ define(['./util'], function (util) {
      * @return {boolean} isVisible
      */
     AppendNode.prototype.isVisible = function () {
-      return this.parent.type.getType() == 'List' || this.parent.type.getType() == 'Dict';
+      return this.editable.value &&
+             (this.parent.type.getType() == 'List' || this.parent.type.getType() == 'Dict');
     };
 
     /**
