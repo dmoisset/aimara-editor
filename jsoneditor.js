@@ -26,7 +26,7 @@
  *
  * @author  Daniel Moisset, dmoisset@machinalis.com
  * @version 3.1.2
- * @date    2015-02-27
+ * @date    2015-03-02
  */
 
 (function webpackUniversalModuleDefinition(root, factory) {
@@ -2360,8 +2360,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * This is used in setValue for constructors inside Choices, 
 	   * and plain ol' Constructors 
 	   */
-	  Node.prototype.addConstructorChildren = function(constructor, value) {
-	    fields = constructor.getChildren();
+	  Node.prototype.addConstructorChildren = function(constructor, value, errors) {
+	    var child, childValue, fieldName,
+	        fields = constructor.getChildren();
 	    for (var i = 0, iMax = fields.length; i < iMax; i++) {
 	      fieldName = fields[i].getFieldName();
 	      if (value[fieldName] === undefined || value[fieldName] === null) {
@@ -2383,6 +2384,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * This is used in setValue for normal lists
 	   */
 	  Node.prototype.addListChildren = function(childrenType, value) {
+	    var child, childValue;
 	    for (var i = 0, iMax = value.length; i < iMax; i++) {
 	      childValue = value[i];
 	      child = new Node(this.editor, {
@@ -2397,6 +2399,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * This is used in setValue for normal dicts
 	   */
 	  Node.prototype.addDictChildren = function(childrenType, value) {
+	    var child, childValue;
 	    for (var childField in value) {
 	      if (value.hasOwnProperty(childField)) {
 	        childValue = value[childField];
@@ -2419,7 +2422,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * @param {Type} [type]
 	   */
 	  Node.prototype.setValue = function(value, type) {
-	    var childValue, child,
+	    var child,
 	        errors = [];
 
 	    // first clear all current childs (if any)
@@ -2453,7 +2456,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        value = this.type.buildDefaultValue();
 	      }
 	      this.childs = [];
-	      this.addConstructorChildren(this.type, value);
+	      this.addConstructorChildren(this.type, value, errors);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Choice') {
@@ -2479,7 +2482,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        i = 0;
 	      }
 	      var constructor = choices[i];
-	      this.addConstructorChildren(constructor, value);
+	      this.addConstructorChildren(constructor, value, errors);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Anything') {
