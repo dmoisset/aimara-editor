@@ -1756,17 +1756,20 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         domValue.innerHTML = '';
         var valueLabel = this.value?this.value.getLabel():'';
         for (var i = 0; i < this.type.getChildren().length; i++) {
-          var option = document.createElement('option')
+          var option = document.createElement('option');
           option.innerHTML = this.type.getChildren()[i].getLabel();
           option.setAttribute('value', this.type.getChildren()[i].getLabel());
           domValue.appendChild(option);
         }
         domValue.value = valueLabel;
+        if (!this.editable.value) {
+            domValue.setAttribute('disabled', true);
+        }
       }
       else if (this.type.getType() == 'Anything') {
         domValue.innerHTML = '';
         function addOption(optionName) {
-          var option = document.createElement('option')
+          var option = document.createElement('option');
           option.innerHTML = optionName;
           option.setAttribute('value', optionName);
           domValue.appendChild(option);
@@ -1786,6 +1789,9 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           var valueType = this.value?this.value.getLabel():'';
         }
         domValue.value = valueType;
+        if (!this.editable.value) {
+          domValue.setAttribute('disabled', true);
+        }
       }
       else {
         domValue.innerHTML = this._escapeHTML(this.value);
@@ -2739,8 +2745,8 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   Node.prototype._isRemovable = function () {
     if (this.parent) {
       var ptype = this.parent.type.getType();
-      return (ptype === "List") || (ptype === "Dict");
-    };
+      return this.editable.value && (ptype === "List") || (ptype === "Dict");
+    }
     return false
   };
 
