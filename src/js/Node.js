@@ -196,7 +196,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for constructors inside Choices, 
    * and plain ol' Constructors 
    */
-  Node.prototype.addConstructorChildren = function(constructor, value) {
+  Node.prototype.addConstructorChildren = function(constructor, value, errors) {
     fields = constructor.getChildren();
     for (var i = 0, iMax = fields.length; i < iMax; i++) {
       fieldName = fields[i].getFieldName();
@@ -289,7 +289,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      this.addConstructorChildren(this.type, value);
+      this.addConstructorChildren(this.type, value, errors);
       this.value = value;
     }
     else if (this.type.getType() == 'Choice') {
@@ -315,7 +315,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         i = 0;
       }
       var constructor = choices[i];
-      this.addConstructorChildren(constructor, value);
+      this.addConstructorChildren(constructor, value, errors);
       this.value = value;
     }
     else if (this.type.getType() == 'Anything') {
