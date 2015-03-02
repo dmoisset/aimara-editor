@@ -5,7 +5,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   * @returns {boolean} - true if @obj is an object.
   *                      false if it is a primitive (including null).
   */
-  function isObject(obj) {
+  function _isObject(obj) {
       return obj === Object(obj);
   }
 
@@ -13,7 +13,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   * Guess the chosen type for an Anything typed value.
   * @param value
   */
-  function classifyAnything(value) {
+  function _classifyAnything(value) {
     if (value === null) {
       return 'Null';
     } else if (typeof value === 'boolean') {
@@ -25,7 +25,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     } else if (value instanceof Array) {
       // a list of anything (item type is anything)
       return '[Anything]';
-    } else if (isObject(value)) {
+    } else if (_isObject(value)) {
       if (value.__label__ !== undefined) {
         // an aimara value (from a constructor)
         return 'Constructor';
@@ -68,7 +68,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   * @param typeName
   * @param knownConstructors
   */
-  function fakeAnythingChildType(typeName) {
+  function _fakeAnythingChildType(typeName) {
     var anything = new FakeType('Anything', '', [], null);
 
     if (typeName === 'Null') {
@@ -196,7 +196,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for constructors inside Choices, 
    * and plain ol' Constructors 
    */
-  Node.prototype.addConstructorChildren = function(constructor, value, errors) {
+  Node.prototype._addConstructorChildren = function(constructor, value, errors) {
     var child, childValue, fieldName,
         fields = constructor.getChildren();
     for (var i = 0, iMax = fields.length; i < iMax; i++) {
@@ -219,7 +219,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   /**
    * This is used in setValue for normal lists
    */
-  Node.prototype.addListChildren = function(childrenType, value) {
+  Node.prototype._addListChildren = function(childrenType, value) {
     var child, childValue;
     for (var i = 0, iMax = value.length; i < iMax; i++) {
       childValue = value[i];
@@ -234,7 +234,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   /**
    * This is used in setValue for normal dicts
    */
-  Node.prototype.addDictChildren = function(childrenType, value) {
+  Node.prototype._addDictChildren = function(childrenType, value) {
     var child, childValue;
     for (var childField in value) {
       if (value.hasOwnProperty(childField)) {
@@ -283,7 +283,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      this.addListChildren(this.type.getChildren()[0], value);
+      this._addListChildren(this.type.getChildren()[0], value);
       this.value = value;
     }
     else if (this.type.getType() == 'Constructor') {
@@ -292,7 +292,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      this.addConstructorChildren(this.type, value, errors);
+      this._addConstructorChildren(this.type, value, errors);
       this.value = value;
     }
     else if (this.type.getType() == 'Choice') {
@@ -318,19 +318,19 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         i = 0;
       }
       var constructor = choices[i];
-      this.addConstructorChildren(constructor, value, errors);
+      this._addConstructorChildren(constructor, value, errors);
       this.value = value;
     }
     else if (this.type.getType() == 'Anything') {
       this.childs = [];
 
       // get the type for the fake child based on the value type
-      var valueTypeName = classifyAnything(value),
+      var valueTypeName = _classifyAnything(value),
           itemType;
       if (valueTypeName === 'Constructor') {
         itemType = this.editor.options.knownConstructors[value.__label__];
       } else {
-        itemType = fakeAnythingChildType(valueTypeName);
+        itemType = _fakeAnythingChildType(valueTypeName);
       }
 
       child = new Node(this.editor, {
@@ -349,7 +349,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         errors.push('Invalid value, expected a Dict.');
         value = this.type.buildDefaultValue();
       }
-      this.addDictChildren(this.type.getChildren()[0], value);
+      this._addDictChildren(this.type.getChildren()[0], value);
       this.value = value;
     }
     else if (this.type.getType() == 'Null') {
@@ -378,7 +378,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * Get a filled array with children, used in getValue for lists
    * @return {*} value
    */
-  Node.prototype.getArrayFromChildren = function() {
+  Node.prototype._getArrayFromChildren = function() {
     var arr = [];
     this.childs.forEach (function (child) {
       arr.push(child.getValue());
@@ -390,7 +390,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * Get a filled dict with children, used in getValue for dicts
    * @return {*} value
    */
-  Node.prototype.getDictFromChildren = function() {
+  Node.prototype._getDictFromChildren = function() {
     var obj = {};
     this.childs.forEach (function (child) {
       obj[child.getField()] = child.getValue();
@@ -403,7 +403,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * constructed values, constructed values in choices, and in anythings.
    * @return {*} value
    */
-  Node.prototype.getAimaraValueFromChildren = function() {
+  Node.prototype._getAimaraValueFromChildren = function() {
     var v = this.value;
     this.childs.forEach (function (child) {
       v[child.getField()] = child.getValue();
@@ -419,13 +419,13 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     //var childs, i, iMax;
 
     if (this.type.getType() == 'List') {
-      return this.getArrayFromChildren();
+      return this._getArrayFromChildren();
     }
     else if (this.type.getType() == 'Dict') {
-      return this.getDictFromChildren();
+      return this._getDictFromChildren();
     }
     else if (this.type.getType() == 'Constructor' || this.type.getType() == 'Choice') {
-      return this.getAimaraValueFromChildren();
+      return this._getAimaraValueFromChildren();
     } 
     else if (this.type.getType() == 'Anything') {
       // just look at the value of the only fake child (shame on you child, you are a fake)
@@ -1107,7 +1107,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           // it's a constructor name
           newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
         } else {
-          var itemType = fakeAnythingChildType(option);
+          var itemType = _fakeAnythingChildType(option);
           newValue = itemType.buildDefaultValue();
         }
       } 
@@ -1784,7 +1784,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           addOption(constructorName);
         }
 
-        var valueType = classifyAnything(this.value);
+        var valueType = _classifyAnything(this.value);
         if (valueType === 'Constructor') {
           var valueType = this.value?this.value.getLabel():'';
         }
