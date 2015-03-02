@@ -26,7 +26,7 @@
  *
  * @author  Daniel Moisset, dmoisset@machinalis.com
  * @version 3.1.2
- * @date    2015-02-27
+ * @date    2015-03-02
  */
 
 (function webpackUniversalModuleDefinition(root, factory) {
@@ -2360,7 +2360,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * This is used in setValue for constructors inside Choices, 
 	   * and plain ol' Constructors 
 	   */
-	  Node.prototype.addConstructorChildren = function(constructor, value) {
+	  Node.prototype.addConstructorChildren = function(constructor, value, errors) {
 	    fields = constructor.getChildren();
 	    for (var i = 0, iMax = fields.length; i < iMax; i++) {
 	      fieldName = fields[i].getFieldName();
@@ -2453,7 +2453,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        value = this.type.buildDefaultValue();
 	      }
 	      this.childs = [];
-	      this.addConstructorChildren(this.type, value);
+	      this.addConstructorChildren(this.type, value, errors);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Choice') {
@@ -2479,7 +2479,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        i = 0;
 	      }
 	      var constructor = choices[i];
-	      this.addConstructorChildren(constructor, value);
+	      this.addConstructorChildren(constructor, value, errors);
 	      this.value = value;
 	    }
 	    else if (this.type.getType() == 'Anything') {
