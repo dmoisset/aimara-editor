@@ -197,7 +197,8 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * and plain ol' Constructors 
    */
   Node.prototype.addConstructorChildren = function(constructor, value, errors) {
-    fields = constructor.getChildren();
+    var child, childValue, fieldName,
+        fields = constructor.getChildren();
     for (var i = 0, iMax = fields.length; i < iMax; i++) {
       fieldName = fields[i].getFieldName();
       if (value[fieldName] === undefined || value[fieldName] === null) {
@@ -219,6 +220,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for normal lists
    */
   Node.prototype.addListChildren = function(childrenType, value) {
+    var child, childValue;
     for (var i = 0, iMax = value.length; i < iMax; i++) {
       childValue = value[i];
       child = new Node(this.editor, {
@@ -233,6 +235,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for normal dicts
    */
   Node.prototype.addDictChildren = function(childrenType, value) {
+    var child, childValue;
     for (var childField in value) {
       if (value.hasOwnProperty(childField)) {
         childValue = value[childField];
@@ -255,7 +258,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * @param {Type} [type]
    */
   Node.prototype.setValue = function(value, type) {
-    var childValue, child,
+    var child,
         errors = [];
 
     // first clear all current childs (if any)
