@@ -26,7 +26,7 @@
  *
  * @author  Daniel Moisset, dmoisset@machinalis.com
  * @version 3.1.2
- * @date    2015-02-27
+ * @date    2015-03-02
  */
 
 (function webpackUniversalModuleDefinition(root, factory) {
@@ -3917,17 +3917,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	        domValue.innerHTML = '';
 	        var valueLabel = this.value?this.value.getLabel():'';
 	        for (var i = 0; i < this.type.getChildren().length; i++) {
-	          var option = document.createElement('option')
+	          var option = document.createElement('option');
 	          option.innerHTML = this.type.getChildren()[i].getLabel();
 	          option.setAttribute('value', this.type.getChildren()[i].getLabel());
 	          domValue.appendChild(option);
 	        }
 	        domValue.value = valueLabel;
+	        if (!this.editable.value) {
+	            domValue.setAttribute('disabled', true);
+	        }
 	      }
 	      else if (this.type.getType() == 'Anything') {
 	        domValue.innerHTML = '';
 	        function addOption(optionName) {
-	          var option = document.createElement('option')
+	          var option = document.createElement('option');
 	          option.innerHTML = optionName;
 	          option.setAttribute('value', optionName);
 	          domValue.appendChild(option);
@@ -3947,6 +3950,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	          var valueType = this.value?this.value.getLabel():'';
 	        }
 	        domValue.value = valueType;
+	        if (!this.editable.value) {
+	          domValue.setAttribute('disabled', true);
+	        }
 	      }
 	      else {
 	        domValue.innerHTML = this._escapeHTML(this.value);
@@ -4900,8 +4906,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  Node.prototype._isRemovable = function () {
 	    if (this.parent) {
 	      var ptype = this.parent.type.getType();
-	      return (ptype === "List") || (ptype === "Dict");
-	    };
+	      return this.editable.value && (ptype === "List") || (ptype === "Dict");
+	    }
 	    return false
 	  };
 
@@ -5131,7 +5137,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	     * @return {boolean} isVisible
 	     */
 	    AppendNode.prototype.isVisible = function () {
-	      return this.parent.type.getType() == 'List' || this.parent.type.getType() == 'Dict';
+	      return this.editable.value &&
+	             (this.parent.type.getType() == 'List' || this.parent.type.getType() == 'Dict');
 	    };
 
 	    /**
