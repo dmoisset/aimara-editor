@@ -9,6 +9,30 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       return obj === Object(obj);
   }
 
+  function _pathIsInReadOnlyPaths(aimaraPath, readOnlyAimaraPaths) {
+    var currentPath, areEquals;
+
+    for (var iPaths = 0, lPaths=readOnlyAimaraPaths.length; iPaths < lPaths; iPaths++) {
+      currentPath = readOnlyAimaraPaths[iPaths];
+      areEquals = false;
+
+      if (aimaraPath.length == currentPath.length) {
+        areEquals = true;
+        for (var iCurrentPath = 0, lCurrentPath=currentPath.length; iCurrentPath < lCurrentPath; iCurrentPath++) {
+          if (aimaraPath[iCurrentPath] != currentPath[iCurrentPath]) { 
+            areEquals = false;   
+            iCurrentPath = lCurrentPath;
+          }           
+        }       
+      }
+
+      if (areEquals) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
   * Guess the chosen type for an Anything typed value.
   * @param value
@@ -101,6 +125,23 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     this.editor = editor;
     this.dom = {};
     this.expanded = false;
+
+    if (params && params.aimaraPath) {
+      this.aimaraPath = params.aimaraPath;
+    } else if (editor) {
+      this.aimaraPath = editor.options.rootAimaraPath;
+    } else {
+      this.aimaraPath = [];
+    }
+
+    var readOnlyAimaraPaths;
+    if (this.editor) {
+      readOnlyAimaraPaths = editor.options.readOnlyAimaraPaths;
+    } else {
+      readOnlyAimaraPaths = [];
+    }
+
+    this.isAimaraReadOnly = _pathIsInReadOnlyPaths(this.aimaraPath, readOnlyAimaraPaths);
 
     if(params && (params instanceof Object)) {
       this.setField(params.field, params.fieldEditable);
@@ -197,19 +238,23 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * and plain ol' Constructors 
    */
   Node.prototype._addConstructorChildren = function(constructor, value, errors) {
-    var child, childValue, fieldName,
-        fields = constructor.getChildren();
+    var child, childValue, field;
+    if (constructor.typeInfo) {
+        constructor = constructor.typeInfo;
+    }
+    var fields = constructor.childTypesWithPaths(this.aimaraPath);
     for (var i = 0, iMax = fields.length; i < iMax; i++) {
-      fieldName = fields[i].getFieldName();
-      if (value[fieldName] === undefined || value[fieldName] === null) {
-        errors.push('Missing field: ' + fieldName);
-        value[fieldName] = fields[i].buildDefaultValue();
+      field = fields[i];
+      if (value[field.fieldName] === undefined || value[field.fieldName] === null) {
+        errors.push('Missing field: ' + field.fieldName);
+        value[field.fieldName] = field.typeInfo.buildDefaultValue();
       }
-      childValue = value[fieldName];
+      childValue = value[field.fieldName];
       child = new Node(this.editor, {
-        field: fieldName,
+        field: field.fieldName,
         value: childValue,
-        type: fields[i],
+        type: field.typeInfo,
+        aimaraPath: field.path,
       });
       this.appendChild(child);
     }
@@ -219,13 +264,15 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   /**
    * This is used in setValue for normal lists
    */
-  Node.prototype._addListChildren = function(childrenType, value) {
-    var child, childValue;
+  Node.prototype._addListChildren = function(type, value) {
+    var childrenType = type.childTypesWithPaths(this.aimaraPath)[0],
+        child, childValue;
     for (var i = 0, iMax = value.length; i < iMax; i++) {
       childValue = value[i];
       child = new Node(this.editor, {
         value: childValue,
-        type: childrenType,
+        type: childrenType.typeInfo,
+        aimaraPath: childrenType.path,
       });
       this.appendChild(child);
     }
@@ -234,8 +281,9 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   /**
    * This is used in setValue for normal dicts
    */
-  Node.prototype._addDictChildren = function(childrenType, value) {
-    var child, childValue;
+  Node.prototype._addDictChildren = function(type, value) {
+    var childrenType = type.childTypesWithPaths(this.aimaraPath)[0],
+        child, childValue;
     for (var childField in value) {
       if (value.hasOwnProperty(childField)) {
         childValue = value[childField];
@@ -244,7 +292,8 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           child = new Node(this.editor, {
             field: childField,
             value: childValue,
-            type: childrenType,
+            type: childrenType.typeInfo,
+            aimaraPath: childrenType.path,
           });
           this.appendChild(child);
         }
@@ -283,7 +332,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      this._addListChildren(this.type.getChildren()[0], value);
+      this._addListChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Constructor') {
@@ -337,6 +386,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         field: 'value',
         value: value,
         type: itemType,
+        aimaraPath: this.aimaraPath,
       });
       this.appendChild(child);
 
@@ -349,7 +399,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         errors.push('Invalid value, expected a Dict.');
         value = this.type.buildDefaultValue();
       }
-      this._addDictChildren(this.type.getChildren()[0], value);
+      this._addDictChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Null') {
@@ -462,6 +512,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     clone.fieldEditable = this.fieldEditable;
     clone.value = this.value;
     clone.expanded = this.expanded;
+    clone.aimaraPath = this.aimaraPath;
 
     if (this.childs) {
       // an object or array
