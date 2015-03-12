@@ -311,6 +311,12 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     this.type = type || this.type;
     var fields;
 
+    if (this.isAimaraReadOnly) {
+      // for aimara read onlys, don't build childrens, will just have a place holder
+      this.value = null;
+      return null;
+    }
+
     if (!this.type) {
       this.childs = undefined;
       this.value = null;
@@ -2754,6 +2760,11 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * @private
    */
   Node.prototype._hasChilds = function () {
+    if (this.isAimaraReadOnly) {
+      // for aimara read onlys, hide any kind of child nodes
+      return false;
+    }
+
     if (this.type.getType() === 'Choice') {
       for (var i = 0; i < this.type.getChildren().length; i++) {
         if (this.type.getChildren()[i].getChildren().length > 0) return true;
