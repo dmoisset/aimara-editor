@@ -75,52 +75,26 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
-   * @constructor FakeType
-   * A fake type to be used when building types for anything items (childs)
-   * @param type
-   * @param label
-   * @param children
-   * @param defaultValue
-   */
-  function FakeType(type, label, children, defaultValue) {
-    this.type = type;
-    this.label = label;
-    this.children = children;
-    this.defaultValue = defaultValue;
-  }
-  FakeType.prototype.getType = function () {
-    return this.type;
-  }
-  FakeType.prototype.getLabel = function () {
-    return this.label;
-  }
-  FakeType.prototype.getChildren = function () {
-    return this.children;
-  }
-  FakeType.prototype.buildDefaultValue = function () {
-    return this.defaultValue;
-  }
-
-  /**
   * Create a fake type node for the chosen anything item type
   * @param typeName
   * @param knownConstructors
   */
-  function _fakeAnythingChildType(typeName) {
-    var anything = new FakeType('Anything', '', [], null);
+  function _buildAnythingChildType(typeFactory, typeName) {
+    var anything = new typeFactory('Anything', '', []);
+    var anythingField = anything.asFieldInfo(0)
 
     if (typeName === 'Null') {
-      return new FakeType(typeName, '', [], null);
+      return new typeFactory(typeName, '', []);
     } else if (typeName === 'Boolean') {
-      return new FakeType(typeName, '', [], false);
+      return new typeFactory(typeName, '', []);
     } else if (typeName === 'Number') {
-      return new FakeType(typeName, '', [], 0);
+      return new typeFactory(typeName, '', []);
     } else if (typeName === 'String') {
-      return new FakeType(typeName, '', [], '');
+      return new typeFactory(typeName, '', []);
     } else if (typeName === '[Anything]') {
-      return new FakeType('List', '', [anything], []);
+      return new typeFactory('List', '', [anythingField]);
     } else if (typeName ===  '{Anything}') {
-      return new FakeType('Dict', '', [anything], {});
+      return new typeFactory('Dict', '', [anythingField]);
     }
   }
 
@@ -393,7 +367,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       if (valueTypeName === 'Constructor') {
         itemType = this.editor.options.knownConstructors[value.__label__];
       } else {
-        itemType = _fakeAnythingChildType(valueTypeName);
+        itemType = _buildAnythingChildType(this.editor.options.typeFactory, valueTypeName);
       }
 
       child = new Node(this.editor, {
@@ -1172,7 +1146,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           // it's a constructor name
           newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
         } else {
-          var itemType = _fakeAnythingChildType(option);
+          var itemType = _buildAnythingChildType(this.editor.options.typeFactory, option);
           newValue = itemType.buildDefaultValue();
         }
       } 
