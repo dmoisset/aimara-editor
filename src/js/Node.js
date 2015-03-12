@@ -1794,14 +1794,30 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     }
 
     // update value
-    var domValue = this.dom.value;
+    var childText, domValue = this.dom.value;
     if (domValue) {
       var count = this.childs ? this.childs.length : 0;
       if (this.type.getType() == 'List') {
-        domValue.innerHTML = '[' + count + ']';
+        if (this.isAimaraReadOnly) {
+          childText = this.type.getChildren()[0].getType();
+          if (childText === 'Constructor') {
+            childText = this.type.getChildren()[0].getLabel();
+          }
+          domValue.innerHTML = '[' + childText + ']';
+        } else {
+          domValue.innerHTML = '[' + count + ']';
+        }
       }
       else if (this.type.getType() == 'Dict') {
-        domValue.innerHTML = '{' + count + '}';
+        if (this.isAimaraReadOnly) {
+          childText = this.type.getChildren()[0].getType();
+          if (childText === 'Constructor') {
+            childText = this.type.getChildren()[0].getLabel();
+          }
+          domValue.innerHTML = '{' + childText + '}';
+        } else {
+          domValue.innerHTML = '{' + count + '}';
+        }
       }
       else if (this.type.getType() == 'Constructor') {
         domValue.innerHTML = this.type.getLabel() + '(...)';
