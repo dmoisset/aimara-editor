@@ -34,6 +34,20 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
+  * Extract the actual TypeInfo instance from a TypeInfo or a FieldInfo
+  * @param type
+  */
+  function getActualTypeInfo(type) {
+    if (type.typeInfo) {
+        // asume it's a FieldInfo
+        return type.typeInfo;
+    } else {
+        // asume it's a TypeInfo
+        return type;
+    }
+  }
+
+  /**
   * Guess the chosen type for an Anything typed value.
   * @param value
   */
@@ -239,9 +253,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    */
   Node.prototype._addConstructorChildren = function(constructor, value, errors) {
     var child, childValue, field;
-    if (constructor.typeInfo) {
-        constructor = constructor.typeInfo;
-    }
+    constructor = getActualTypeInfo(constructor);
     var fields = constructor.childTypesWithPaths(this.aimaraPath);
     for (var i = 0, iMax = fields.length; i < iMax; i++) {
       field = fields[i];
@@ -265,6 +277,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for normal lists
    */
   Node.prototype._addListChildren = function(type, value) {
+    type = getActualTypeInfo(type)
     var childrenType = type.childTypesWithPaths(this.aimaraPath)[0],
         child, childValue;
     for (var i = 0, iMax = value.length; i < iMax; i++) {
@@ -282,6 +295,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * This is used in setValue for normal dicts
    */
   Node.prototype._addDictChildren = function(type, value) {
+    type = getActualTypeInfo(type)
     var childrenType = type.childTypesWithPaths(this.aimaraPath)[0],
         child, childValue;
     for (var childField in value) {
