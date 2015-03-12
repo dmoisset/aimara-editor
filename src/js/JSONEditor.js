@@ -74,6 +74,7 @@ define(['./treemode', './util'], function (treemode, util) {
     this.options = options || {};
     this.options.knownConstructors = this.options.knownConstructors || {};
     this.options.readOnlyPaths = this.options.readOnlyPaths || {};
+    this.options.rootPath = this.options.rootPath || [];
     this.value = value;
     this.type = type;
     var mode = this.options.mode || 'tree';
