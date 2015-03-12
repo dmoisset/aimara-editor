@@ -73,7 +73,7 @@ define(['./treemode', './util'], function (treemode, util) {
     this.container = container;
     this.options = options || {};
     this.options.knownConstructors = this.options.knownConstructors || {};
-    this.options.readOnlyAimaraPaths = this.options.readOnlyAimaraPaths || {};
+    this.options.readOnlyAimaraPaths = this.options.readOnlyAimaraPaths || [];
     this.options.rootAimaraPath = this.options.rootAimaraPath || [];
     // a function able to get the values for the read only paths
     this.options.getReadOnlyValue = this.options.getReadOnlyValue;  
