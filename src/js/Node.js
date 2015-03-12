@@ -461,6 +461,15 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    */
   Node.prototype.getValue = function() {
     //var childs, i, iMax;
+    
+    if (this.isAimaraReadOnly) {
+      // for aimara read onlys, get the value from the values source
+      if (this.editor.options.getReadOnlyValue == undefined) {
+        throw new Error('Need a source for the aimara read only values');
+      }
+
+      return this.editor.options.getReadOnlyValue(this.aimaraPath);
+    }
 
     if (this.type.getType() == 'List') {
       return this._getArrayFromChildren();
