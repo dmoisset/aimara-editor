@@ -75,6 +75,8 @@ define(['./treemode', './util'], function (treemode, util) {
     this.options.knownConstructors = this.options.knownConstructors || {};
     this.options.readOnlyPaths = this.options.readOnlyPaths || {};
     this.options.rootPath = this.options.rootPath || [];
+    // a function able to get the values for the read only paths
+    this.options.getReadOnlyValue = this.options.getReadOnlyValue;  
     this.value = value;
     this.type = type;
     var mode = this.options.mode || 'tree';
