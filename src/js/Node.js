@@ -1758,7 +1758,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           addOption(constructorName);
         }
 
-        var valueType = _classifyAnything(this.value);
+        var valueType = this.editor.options.type_trees.classifyAnything(this.value);
         if (valueType === 'Constructor') {
           var valueType = this.value?this.value.getLabel():'';
         }
