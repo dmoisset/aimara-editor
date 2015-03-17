@@ -1,14 +1,4 @@
 define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
-  /**
-  * Check if the given @obj is an object.
-  * @param obj
-  * @returns {boolean} - true if @obj is an object.
-  *                      false if it is a primitive (including null).
-  */
-  function _isObject(obj) {
-      return obj === Object(obj);
-  }
-
   function _pathIsInReadOnlyPaths(aimaraPath, readOnlyAimaraPaths) {
     var currentPath, areEquals;
 
@@ -44,57 +34,6 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     } else {
         // asume it's a TypeInfo
         return type;
-    }
-  }
-
-  /**
-  * Guess the chosen type for an Anything typed value.
-  * @param value
-  */
-  function _classifyAnything(value) {
-    if (value === null) {
-      return 'Null';
-    } else if (typeof value === 'boolean') {
-      return 'Boolean';
-    } else if (typeof value === 'number') {
-      return 'Number';
-    } else if (typeof value === 'string') {
-      return 'String';
-    } else if (value instanceof Array) {
-      // a list of anything (item type is anything)
-      return '[Anything]';
-    } else if (_isObject(value)) {
-      if (value.__label__ !== undefined) {
-        // an aimara value (from a constructor)
-        return 'Constructor';
-      } else {
-        // a dict of anything (item type is anything)
-        return '{Anything}';
-      }
-    }
-  }
-
-  /**
-  * Create a fake type node for the chosen anything item type
-  * @param typeName
-  * @param knownConstructors
-  */
-  function _buildAnythingChildType(typeFactory, typeName) {
-    var anything = new typeFactory('Anything', '', []);
-    var anythingField = anything.asFieldInfo(0)
-
-    if (typeName === 'Null') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === 'Boolean') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === 'Number') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === 'String') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === '[Anything]') {
-      return new typeFactory('List', '', [anythingField]);
-    } else if (typeName ===  '{Anything}') {
-      return new typeFactory('Dict', '', [anythingField]);
     }
   }
 
