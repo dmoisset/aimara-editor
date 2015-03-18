@@ -4,19 +4,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
 
     for (var iPaths = 0, lPaths=readOnlyAimaraPaths.length; iPaths < lPaths; iPaths++) {
       currentPath = readOnlyAimaraPaths[iPaths];
-      areEquals = false;
-
-      if (aimaraPath.length == currentPath.length) {
-        areEquals = true;
-        for (var iCurrentPath = 0, lCurrentPath=currentPath.length; iCurrentPath < lCurrentPath; iCurrentPath++) {
-          if (aimaraPath[iCurrentPath] != currentPath[iCurrentPath]) { 
-            areEquals = false;   
-            iCurrentPath = lCurrentPath;
-          }           
-        }       
-      }
-
-      if (areEquals) {
+      if (aimaraPath.join(",") === currentPath.join(",")) {
         return true;
       }
     }
