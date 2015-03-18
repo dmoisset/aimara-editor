@@ -9,6 +9,44 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       return obj === Object(obj);
   }
 
+  function _pathIsInReadOnlyPaths(aimaraPath, readOnlyAimaraPaths) {
+    var currentPath, areEquals;
+
+    for (var iPaths = 0, lPaths=readOnlyAimaraPaths.length; iPaths < lPaths; iPaths++) {
+      currentPath = readOnlyAimaraPaths[iPaths];
+      areEquals = false;
+
+      if (aimaraPath.length == currentPath.length) {
+        areEquals = true;
+        for (var iCurrentPath = 0, lCurrentPath=currentPath.length; iCurrentPath < lCurrentPath; iCurrentPath++) {
+          if (aimaraPath[iCurrentPath] != currentPath[iCurrentPath]) { 
+            areEquals = false;   
+            iCurrentPath = lCurrentPath;
+          }           
+        }       
+      }
+
+      if (areEquals) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+  * Extract the actual TypeInfo instance from a TypeInfo or a FieldInfo
+  * @param type
+  */
+  function getActualTypeInfo(type) {
+    if (type.typeInfo) {
+        // asume it's a FieldInfo
+        return type.typeInfo;
+    } else {
+        // asume it's a TypeInfo
+        return type;
+    }
+  }
+
   /**
   * Guess the chosen type for an Anything typed value.
   * @param value
@@ -37,52 +75,26 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   }
 
   /**
-   * @constructor FakeType
-   * A fake type to be used when building types for anything items (childs)
-   * @param type
-   * @param label
-   * @param children
-   * @param defaultValue
-   */
-  function FakeType(type, label, children, defaultValue) {
-    this.type = type;
-    this.label = label;
-    this.children = children;
-    this.defaultValue = defaultValue;
-  }
-  FakeType.prototype.getType = function () {
-    return this.type;
-  }
-  FakeType.prototype.getLabel = function () {
-    return this.label;
-  }
-  FakeType.prototype.getChildren = function () {
-    return this.children;
-  }
-  FakeType.prototype.buildDefaultValue = function () {
-    return this.defaultValue;
-  }
-
-  /**
   * Create a fake type node for the chosen anything item type
   * @param typeName
   * @param knownConstructors
   */
-  function _fakeAnythingChildType(typeName) {
-    var anything = new FakeType('Anything', '', [], null);
+  function _buildAnythingChildType(typeFactory, typeName) {
+    var anything = new typeFactory('Anything', '', []);
+    var anythingField = anything.asFieldInfo(0)
 
     if (typeName === 'Null') {
-      return new FakeType(typeName, '', [], null);
+      return new typeFactory(typeName, '', []);
     } else if (typeName === 'Boolean') {
-      return new FakeType(typeName, '', [], false);
+      return new typeFactory(typeName, '', []);
     } else if (typeName === 'Number') {
-      return new FakeType(typeName, '', [], 0);
+      return new typeFactory(typeName, '', []);
     } else if (typeName === 'String') {
-      return new FakeType(typeName, '', [], '');
+      return new typeFactory(typeName, '', []);
     } else if (typeName === '[Anything]') {
-      return new FakeType('List', '', [anything], []);
+      return new typeFactory('List', '', [anythingField]);
     } else if (typeName ===  '{Anything}') {
-      return new FakeType('Dict', '', [anything], {});
+      return new typeFactory('Dict', '', [anythingField]);
     }
   }
 
@@ -101,6 +113,23 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     this.editor = editor;
     this.dom = {};
     this.expanded = false;
+
+    if (params && params.aimaraPath) {
+      this.aimaraPath = params.aimaraPath;
+    } else if (editor) {
+      this.aimaraPath = editor.options.rootAimaraPath;
+    } else {
+      this.aimaraPath = [];
+    }
+
+    var readOnlyAimaraPaths;
+    if (this.editor) {
+      readOnlyAimaraPaths = editor.options.readOnlyAimaraPaths;
+    } else {
+      readOnlyAimaraPaths = [];
+    }
+
+    this.isAimaraReadOnly = _pathIsInReadOnlyPaths(this.aimaraPath, readOnlyAimaraPaths);
 
     if(params && (params instanceof Object)) {
       this.setField(params.field, params.fieldEditable);
@@ -197,19 +226,21 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * and plain ol' Constructors 
    */
   Node.prototype._addConstructorChildren = function(constructor, value, errors) {
-    var child, childValue, fieldName,
-        fields = constructor.getChildren();
+    var child, childValue, field;
+    constructor = getActualTypeInfo(constructor);
+    var fields = constructor.childTypesWithPaths(this.aimaraPath);
     for (var i = 0, iMax = fields.length; i < iMax; i++) {
-      fieldName = fields[i].getFieldName();
-      if (value[fieldName] === undefined || value[fieldName] === null) {
-        errors.push('Missing field: ' + fieldName);
-        value[fieldName] = fields[i].buildDefaultValue();
+      field = fields[i];
+      if (value[field.fieldName] === undefined || value[field.fieldName] === null) {
+        errors.push('Missing field: ' + field.fieldName);
+        value[field.fieldName] = field.typeInfo.buildDefaultValue();
       }
-      childValue = value[fieldName];
+      childValue = value[field.fieldName];
       child = new Node(this.editor, {
-        field: fieldName,
+        field: field.fieldName,
         value: childValue,
-        type: fields[i],
+        type: field.typeInfo,
+        aimaraPath: field.path,
       });
       this.appendChild(child);
     }
@@ -219,13 +250,16 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   /**
    * This is used in setValue for normal lists
    */
-  Node.prototype._addListChildren = function(childrenType, value) {
-    var child, childValue;
+  Node.prototype._addListChildren = function(type, value) {
+    type = getActualTypeInfo(type)
+    var childrenType = type.childTypesWithPaths(this.aimaraPath)[0],
+        child, childValue;
     for (var i = 0, iMax = value.length; i < iMax; i++) {
       childValue = value[i];
       child = new Node(this.editor, {
         value: childValue,
-        type: childrenType,
+        type: childrenType.typeInfo,
+        aimaraPath: childrenType.path,
       });
       this.appendChild(child);
     }
@@ -234,8 +268,10 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
   /**
    * This is used in setValue for normal dicts
    */
-  Node.prototype._addDictChildren = function(childrenType, value) {
-    var child, childValue;
+  Node.prototype._addDictChildren = function(type, value) {
+    type = getActualTypeInfo(type)
+    var childrenType = type.childTypesWithPaths(this.aimaraPath)[0],
+        child, childValue;
     for (var childField in value) {
       if (value.hasOwnProperty(childField)) {
         childValue = value[childField];
@@ -244,7 +280,8 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           child = new Node(this.editor, {
             field: childField,
             value: childValue,
-            type: childrenType,
+            type: childrenType.typeInfo,
+            aimaraPath: childrenType.path,
           });
           this.appendChild(child);
         }
@@ -274,6 +311,12 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     this.type = type || this.type;
     var fields;
 
+    if (this.isAimaraReadOnly) {
+      // for aimara read onlys, don't build childrens, will just have a place holder
+      this.value = null;
+      return null;
+    }
+
     if (!this.type) {
       this.childs = undefined;
       this.value = null;
@@ -283,7 +326,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         value = this.type.buildDefaultValue();
       }
       this.childs = [];
-      this._addListChildren(this.type.getChildren()[0], value);
+      this._addListChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Constructor') {
@@ -330,13 +373,14 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       if (valueTypeName === 'Constructor') {
         itemType = this.editor.options.knownConstructors[value.__label__];
       } else {
-        itemType = _fakeAnythingChildType(valueTypeName);
+        itemType = _buildAnythingChildType(this.editor.options.typeFactory, valueTypeName);
       }
 
       child = new Node(this.editor, {
         field: 'value',
         value: value,
         type: itemType,
+        aimaraPath: this.aimaraPath,
       });
       this.appendChild(child);
 
@@ -349,7 +393,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
         errors.push('Invalid value, expected a Dict.');
         value = this.type.buildDefaultValue();
       }
-      this._addDictChildren(this.type.getChildren()[0], value);
+      this._addDictChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Null') {
@@ -417,6 +461,15 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    */
   Node.prototype.getValue = function() {
     //var childs, i, iMax;
+    
+    if (this.isAimaraReadOnly) {
+      // for aimara read onlys, get the value from the values source
+      if (this.editor.options.getReadOnlyValue == undefined) {
+        throw new Error('Need a source for the aimara read only values');
+      }
+
+      return this.editor.options.getReadOnlyValue(this.aimaraPath);
+    }
 
     if (this.type.getType() == 'List') {
       return this._getArrayFromChildren();
@@ -462,6 +515,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     clone.fieldEditable = this.fieldEditable;
     clone.value = this.value;
     clone.expanded = this.expanded;
+    clone.aimaraPath = this.aimaraPath;
 
     if (this.childs) {
       // an object or array
@@ -1107,7 +1161,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           // it's a constructor name
           newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
         } else {
-          var itemType = _fakeAnythingChildType(option);
+          var itemType = _buildAnythingChildType(this.editor.options.typeFactory, option);
           newValue = itemType.buildDefaultValue();
         }
       } 
@@ -1740,14 +1794,30 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     }
 
     // update value
-    var domValue = this.dom.value;
+    var childText, domValue = this.dom.value;
     if (domValue) {
       var count = this.childs ? this.childs.length : 0;
       if (this.type.getType() == 'List') {
-        domValue.innerHTML = '[' + count + ']';
+        if (this.isAimaraReadOnly) {
+          childText = this.type.getChildren()[0].getType();
+          if (childText === 'Constructor') {
+            childText = this.type.getChildren()[0].getLabel();
+          }
+          domValue.innerHTML = '[' + childText + ']';
+        } else {
+          domValue.innerHTML = '[' + count + ']';
+        }
       }
       else if (this.type.getType() == 'Dict') {
-        domValue.innerHTML = '{' + count + '}';
+        if (this.isAimaraReadOnly) {
+          childText = this.type.getChildren()[0].getType();
+          if (childText === 'Constructor') {
+            childText = this.type.getChildren()[0].getLabel();
+          }
+          domValue.innerHTML = '{' + childText + '}';
+        } else {
+          domValue.innerHTML = '{' + count + '}';
+        }
       }
       else if (this.type.getType() == 'Constructor') {
         domValue.innerHTML = this.type.getLabel() + '(...)';
@@ -2715,6 +2785,11 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
    * @private
    */
   Node.prototype._hasChilds = function () {
+    if (this.isAimaraReadOnly) {
+      // for aimara read onlys, hide any kind of child nodes
+      return false;
+    }
+
     if (this.type.getType() === 'Choice') {
       for (var i = 0; i < this.type.getChildren().length; i++) {
         if (this.type.getChildren()[i].getChildren().length > 0) return true;
