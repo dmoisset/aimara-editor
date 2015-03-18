@@ -1,14 +1,4 @@
 define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
-  /**
-  * Check if the given @obj is an object.
-  * @param obj
-  * @returns {boolean} - true if @obj is an object.
-  *                      false if it is a primitive (including null).
-  */
-  function _isObject(obj) {
-      return obj === Object(obj);
-  }
-
   function _pathIsInReadOnlyPaths(aimaraPath, readOnlyAimaraPaths) {
     var currentPath, areEquals;
 
@@ -44,57 +34,6 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     } else {
         // asume it's a TypeInfo
         return type;
-    }
-  }
-
-  /**
-  * Guess the chosen type for an Anything typed value.
-  * @param value
-  */
-  function _classifyAnything(value) {
-    if (value === null) {
-      return 'Null';
-    } else if (typeof value === 'boolean') {
-      return 'Boolean';
-    } else if (typeof value === 'number') {
-      return 'Number';
-    } else if (typeof value === 'string') {
-      return 'String';
-    } else if (value instanceof Array) {
-      // a list of anything (item type is anything)
-      return '[Anything]';
-    } else if (_isObject(value)) {
-      if (value.__label__ !== undefined) {
-        // an aimara value (from a constructor)
-        return 'Constructor';
-      } else {
-        // a dict of anything (item type is anything)
-        return '{Anything}';
-      }
-    }
-  }
-
-  /**
-  * Create a fake type node for the chosen anything item type
-  * @param typeName
-  * @param knownConstructors
-  */
-  function _buildAnythingChildType(typeFactory, typeName) {
-    var anything = new typeFactory('Anything', '', []);
-    var anythingField = anything.asFieldInfo(0)
-
-    if (typeName === 'Null') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === 'Boolean') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === 'Number') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === 'String') {
-      return new typeFactory(typeName, '', []);
-    } else if (typeName === '[Anything]') {
-      return new typeFactory('List', '', [anythingField]);
-    } else if (typeName ===  '{Anything}') {
-      return new typeFactory('Dict', '', [anythingField]);
     }
   }
 
@@ -321,19 +260,11 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       this.childs = undefined;
       this.value = null;
     } else if (this.type.getType() == 'List') {
-      if (!(value instanceof Array)) {
-        errors.push('Invalid value, expected a list.');
-        value = this.type.buildDefaultValue();
-      }
       this.childs = [];
       this._addListChildren(this.type, value);
       this.value = value;
     }
     else if (this.type.getType() == 'Constructor') {
-      if (!(value instanceof Object) || (value instanceof Array)) {
-        errors.push('Invalid value, expected a ' + this.type.getLabel() + '.');
-        value = this.type.buildDefaultValue();
-      }
       this.childs = [];
       this._addConstructorChildren(this.type, value, errors);
       this.value = value;
@@ -341,24 +272,10 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     else if (this.type.getType() == 'Choice') {
       this.childs = [];
       var choices = this.type.getChildren();
-      choiceFound = false;
-      try {
-        for (var i = 0, iMax = choices.length; i < iMax; i++) {
-          if (choices[i].getLabel() == value.getLabel()) {
-            choiceFound = true;
-            break;
-          }
+      for (var i = 0, iMax = choices.length; i < iMax; i++) {
+        if (choices[i].getLabel() == value.getLabel()) {
+          break;
         }
-      }
-      catch (err) {} // handled bellow, as choiceFound will be left as false
-      if (!choiceFound) {
-        var choiceNames = [];
-        for (var j = 0, jMax = choices.length; j < jMax; j++) {
-          choiceNames.push(choices[j].getLabel());
-        }
-        errors.push('Invalid value, expected a valid choice between ' + choiceNames.join(', ') + '.');
-        value = this.type.buildDefaultValue();
-        i = 0;
       }
       var constructor = choices[i];
       this._addConstructorChildren(constructor, value, errors);
@@ -368,13 +285,12 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
       this.childs = [];
 
       // get the type for the fake child based on the value type
-      var valueTypeName = _classifyAnything(value),
+      var valueTypeName = this.editor.options.type_trees.classifyAnything(value),
           itemType;
-      if (valueTypeName === 'Constructor') {
-        itemType = this.editor.options.knownConstructors[value.__label__];
-      } else {
-        itemType = _buildAnythingChildType(this.editor.options.typeFactory, valueTypeName);
-      }
+      itemType = this.editor.options.type_trees.buildAnythingChildType(
+          valueTypeName,
+          this.editor.options.knownConstructors
+      );
 
       child = new Node(this.editor, {
         field: 'value',
@@ -389,23 +305,11 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
     else if (this.type.getType() == 'Dict') {
       // object
       this.childs = [];
-      if (!(value instanceof Object) || (value instanceof Array)) {
-        errors.push('Invalid value, expected a Dict.');
-        value = this.type.buildDefaultValue();
-      }
       this._addDictChildren(this.type, value);
       this.value = value;
     }
-    else if (this.type.getType() == 'Null') {
-      if (value !== null) {
-        errors.push('Invalid value, expected a Null.');
-        value = this.type.buildDefaultValue();
-      }
-      this.childs = undefined;
-      this.value = value;
-    }
     else {
-      // value
+      // null, string, number, boolean
       this.childs = undefined;
       this.value = value;
     }
@@ -1161,7 +1065,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           // it's a constructor name
           newValue = this.editor.options.knownConstructors[option].buildDefaultValue();
         } else {
-          var itemType = _buildAnythingChildType(this.editor.options.typeFactory, option);
+          var itemType = this.editor.options.type_trees.buildAnythingChildType(option, this.editor.options.knownConstructors);
           newValue = itemType.buildDefaultValue();
         }
       } 
@@ -1854,7 +1758,7 @@ define(['./appendNodeFactory', './util'], function (appendNodeFactory, util) {
           addOption(constructorName);
         }
 
-        var valueType = _classifyAnything(this.value);
+        var valueType = this.editor.options.type_trees.classifyAnything(this.value);
         if (valueType === 'Constructor') {
           var valueType = this.value?this.value.getLabel():'';
         }

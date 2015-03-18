@@ -72,8 +72,8 @@ define(['./treemode', './util'], function (treemode, util) {
   JSONEditor.prototype._create = function (container, options, value, type) {
     this.container = container;
     this.options = options || {};
-    if (this.options.typeFactory == undefined ) {
-      throw new Error('The typeFactory option is required')
+    if (this.options.type_trees == undefined ) {
+      throw new Error('The type_trees option is required (reference to the type_trees lib)')
     }
     this.options.knownConstructors = this.options.knownConstructors || {};
     this.options.readOnlyAimaraPaths = this.options.readOnlyAimaraPaths || [];
